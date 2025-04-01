@@ -1,0 +1,56 @@
+version: "3.8"
+services:
+  # MySQL
+  mysql:
+    restart: always
+    container_name: mysql
+    image: mysql:8.0
+    volumes:
+      - mysql_data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: 1234
+      MYSQL_DATABASE: luci_dreams_db
+      MYSQL_USER: mysql
+      MYSQL_PASSWORD: 1234
+    expose:
+      - 3306
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-hmysql", "-uroot", "-p1234" ]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    networks:
+      - glob-net
+
+  # FastAPI Server
+  server:
+    restart: always
+    container_name: server
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
+    env_file:
+      - .env
+    expose:
+      - 8080
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://0.0.0.0:8080/api/health" ]
+      interval: 10s
+      timeout: 30s
+      retries: 20
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - glob-net
+
+networks:
+  glob-net:
+    driver: bridge
+
+volumes:
+  mysql_data: {}
